@@ -20,7 +20,8 @@
   "dependencies": {
     "@prisma/client": "^4.8.1",
     "express": "^4.18.2",
-    "prisma": "^4.8.1"
+    "prisma": "^4.8.1",
+    "zod": "^3.20.2"
   },
   "eslintConfig": {
     "extends": [
