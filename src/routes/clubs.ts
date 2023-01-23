@@ -2,6 +2,7 @@
 import { Router } from 'express'
 import { Prisma, PrismaClient } from '@prisma/client'
 import { z } from 'zod'
+import { handleUpdateErrors } from '../utils'
 
 // Schema to validate received club object
 const clubSchema = z.object({
@@ -72,7 +73,15 @@ clubsRouter.post('/', async (req, res) => {
   try {
     const parsedClub = clubSchema.parse(req.body)
     const club = await prisma.club.create({
-      data: parsedClub
+      data: {
+        ...parsedClub,
+        members: {
+          connect: { id: parsedClub.ownerId }
+        },
+        admins: {
+          connect: { id: parsedClub.ownerId }
+        }
+      }
     })
     res.json(club)
   } catch (error) {
@@ -88,5 +97,82 @@ clubsRouter.post('/', async (req, res) => {
       res.status(500).json(error)
       console.error(error)
     }
+  }
+})
+
+// Add a member to a club
+clubsRouter.post('/:clubId/members', async (req, res) => {
+  try {
+    const { clubId } = req.params
+    const memberId: String = req.body.memberId
+    const club = await prisma.club.update({
+      where: { id: Number(clubId) },
+      data: {
+        members: {
+          connect: { id: Number(memberId) }
+        }
+      }
+    })
+    res.json(club)
+  } catch (error) {
+    handleUpdateErrors(error, res)
+  }
+})
+
+// Delete member from a club
+clubsRouter.delete('/:clubId/members/:memberId', async (req, res) => {
+  try {
+    const { clubId, memberId } = req.params
+    const club = await prisma.club.update({
+      where: { id: Number(clubId) },
+      data: {
+        members: {
+          disconnect: { id: Number(memberId) }
+        }
+      }
+    })
+    res.json(club)
+  } catch (error: UpdateError) {
+    handleUpdateErrors(error, res)
+  }
+})
+
+// Add an admin to a club
+clubsRouter.post('/:clubId/admins', async (req, res) => {
+  try {
+    const { clubId } = req.params
+    const adminId: String = req.body.adminId
+    const club = await prisma.club.update({
+      where: { id: Number(clubId) },
+      data: {
+        admins: {
+          connect: { id: Number(adminId) }
+        },
+        members: {
+          connect: { id: Number(adminId) }
+        }
+      }
+    })
+    res.json(club)
+  } catch (error: UpdateError) {
+    handleUpdateErrors(error, res)
+  }
+})
+
+// Delete admin from a club
+clubsRouter.delete('/:clubId/admins/:adminId', async (req, res) => {
+  try {
+    const { clubId, adminId } = req.params
+    const club = await prisma.club.update({
+      where: { id: Number(clubId) },
+      data: {
+        admins: {
+          disconnect: { id: Number(adminId) }
+        }
+      }
+    })
+    res.json(club)
+  } catch (error: UpdateError) {
+    handleUpdateErrors(error, res)
   }
 })
