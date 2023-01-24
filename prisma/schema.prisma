@@ -14,6 +14,7 @@ model User {
   id          Int     @id @default(autoincrement())
   email       String  @unique
   name        String
+  password    String  @default("")
   description String?
   joinedClubs Club[]  @relation("Member")
   ownedClubs  Club[]  @relation("Owner")

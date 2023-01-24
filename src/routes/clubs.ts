@@ -2,7 +2,7 @@
 import { Router } from 'express'
 import { Prisma, PrismaClient } from '@prisma/client'
 import { z } from 'zod'
-import { handleUpdateErrors } from '../utils'
+import { handleUpdateErrors, isAuthenticated } from '../utils'
 
 // Schema to validate received club object
 const clubSchema = z.object({
@@ -28,6 +28,7 @@ const clubSchema = z.object({
 })
 
 export const clubsRouter = Router()
+clubsRouter.use(isAuthenticated) // All routes will be log-in protected
 const prisma = new PrismaClient()
 
 // GET all clubs
@@ -114,7 +115,7 @@ clubsRouter.post('/:clubId/members', async (req, res) => {
       }
     })
     res.json(club)
-  } catch (error) {
+  } catch (error: UpdateError) {
     handleUpdateErrors(error, res)
   }
 })
