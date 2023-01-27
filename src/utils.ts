@@ -1,4 +1,4 @@
-import { Prisma } from '@prisma/client'
+import { Prisma, PrismaClient } from '@prisma/client'
 import { NextFunction, Request, Response } from 'express'
 import * as jwt from 'jsonwebtoken'
 
@@ -15,18 +15,18 @@ export const handleUpdateErrors = (error: UpdateError, res: Response): undefined
     res.status(400).json({ error: 'Invalid parameters' })
     return
   }
-  res.status(500).json(error)
+  res.status(500).json({ error })
   console.error(error)
 }
 
-// Middleware to protect routes
+// Middleware to protect routes for logged in users only
 export const isAuthenticated = (req: Request, res: Response, next: NextFunction): void => {
   try {
     const authHeader = req.headers.authorization
     if (typeof authHeader === 'string') {
       // Extract token from header and verify
       const token = authHeader.split(' ')[1]
-      const user = jwt.verify(token, process.env.JWT_SECRET as jwt.Secret)
+      const user = jwt.verify(token, process.env.JWT_SECRET as jwt.Secret) as jwt.JwtPayload
 
       // Add user to request and continue
       req.user = user
@@ -36,5 +36,26 @@ export const isAuthenticated = (req: Request, res: Response, next: NextFunction)
     }
   } catch (error) {
     res.sendStatus(401)
+  }
+}
+
+// Helper function for validating if user is member, admin or owner of a given club
+export const isClubRole = (clubRoles: ClubRole[]) => {
+  return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    const prisma = new PrismaClient()
+    // Build query to validate user's role
+    const clubQueries = clubRoles.map((clubType) => [clubType, { some: { id: Number(req.params.clubId) } }])
+    try {
+      // Try to find user
+      await prisma.user.findFirstOrThrow({
+        where: {
+          id: Number(req.user?.id),
+          ...clubQueries
+        }
+      })
+      next()
+    } catch (error) {
+      res.status(401).json({ error: 'User role does not permit this action' })
+    }
   }
 }

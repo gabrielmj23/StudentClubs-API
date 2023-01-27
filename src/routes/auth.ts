@@ -52,7 +52,7 @@ const userSchema = z.object({
 class AuthError extends Error {
   constructor (message: string) {
     super(message)
-    this.name = 'AuthenticationError'
+    this.name = 'AuthError'
   }
 }
 
