@@ -39,7 +39,7 @@ export const isAuthenticated = (req: Request, res: Response, next: NextFunction)
   }
 }
 
-// Helper function for validating if user is member, admin or owner of a given club
+// Helper middleware for validating if user is member, admin or owner of a given club
 export const isClubRole = (clubRoles: ClubRole[]) => {
   return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     const prisma = new PrismaClient()
@@ -49,7 +49,7 @@ export const isClubRole = (clubRoles: ClubRole[]) => {
       // Try to find user
       await prisma.user.findFirstOrThrow({
         where: {
-          id: Number(req.user?.id),
+          id: Number(req.user?.user.id),
           ...clubQueries
         }
       })
@@ -57,5 +57,13 @@ export const isClubRole = (clubRoles: ClubRole[]) => {
     } catch (error) {
       res.status(401).json({ error: 'User role does not permit this action' })
     }
+  }
+}
+
+// Error class for user authentication
+export class AuthError extends Error {
+  constructor (message: string) {
+    super(message)
+    this.name = 'AuthError'
   }
 }

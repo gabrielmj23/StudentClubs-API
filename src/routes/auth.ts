@@ -4,6 +4,7 @@ import { z } from 'zod'
 import * as bcrypt from 'bcryptjs'
 import { Prisma, PrismaClient } from '@prisma/client'
 import * as jwt from 'jsonwebtoken'
+import { AuthError } from '../utils'
 
 // Schema to validate received user object
 const userSchema = z.object({
@@ -47,14 +48,6 @@ const userSchema = z.object({
     message: 'Password is not strong enough',
     path: ['password']
   })
-
-// Error class for user authentication
-class AuthError extends Error {
-  constructor (message: string) {
-    super(message)
-    this.name = 'AuthError'
-  }
-}
 
 export const authRouter = Router()
 const prisma = new PrismaClient()
