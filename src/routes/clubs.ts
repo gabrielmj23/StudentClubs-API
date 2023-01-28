@@ -3,6 +3,7 @@ import { Router } from 'express'
 import { Prisma, PrismaClient } from '@prisma/client'
 import { z, ZodError } from 'zod'
 import { handleUpdateErrors, isAuthenticated, isClubRole } from '../utils'
+import { postsRouter } from './posts'
 
 // Schema to validate received club object for new clubs
 const clubSchema = z.object({
@@ -38,12 +39,22 @@ const updateClubSchema = z.object({
 
 export const clubsRouter = Router()
 clubsRouter.use(isAuthenticated) // All routes will be log-in protected
+clubsRouter.use('/:clubId/posts', postsRouter) // Set up routes relating to clubs' posts
 const prisma = new PrismaClient()
 
 // Get all clubs
 clubsRouter.get('/', async (_req, res) => {
   try {
-    const clubs = await prisma.club.findMany()
+    const clubs = await prisma.club.findMany({
+      include: {
+        owner: {
+          select: { name: true }
+        },
+        _count: {
+          select: { members: true, posts: true }
+        }
+      }
+    })
     res.json({
       clubs: clubs ?? []
     })
@@ -60,6 +71,14 @@ clubsRouter.get('/:clubId', async (req, res) => {
     const club = await prisma.club.findFirstOrThrow({
       where: {
         id: Number(clubId)
+      },
+      include: {
+        owner: {
+          select: { name: true }
+        },
+        _count: {
+          select: { members: true, posts: true }
+        }
       }
     })
     res.json(club)
@@ -115,7 +134,7 @@ clubsRouter.post('/', async (req, res) => {
 })
 
 // Update a club's name or description
-clubsRouter.put('/:clubId', isClubRole(['ownedClubs']), async (req, res) => {
+clubsRouter.put('/:clubId', isClubRole('ownedClubs'), async (req, res) => {
   try {
     const { clubId } = req.params
 
@@ -145,7 +164,7 @@ clubsRouter.put('/:clubId', isClubRole(['ownedClubs']), async (req, res) => {
 })
 
 // Delete a club
-clubsRouter.delete('/:clubId', isClubRole(['ownedClubs']), async (req, res) => {
+clubsRouter.delete('/:clubId', isClubRole('ownedClubs'), async (req, res) => {
   try {
     const { clubId } = req.params
     await prisma.club.delete({
@@ -167,7 +186,7 @@ clubsRouter.delete('/:clubId', isClubRole(['ownedClubs']), async (req, res) => {
 })
 
 // Add a member to a club
-clubsRouter.post('/:clubId/members', isClubRole(['adminClubs', 'ownedClubs']), async (req, res) => {
+clubsRouter.post('/:clubId/members', isClubRole('adminClubs'), async (req, res) => {
   try {
     const { clubId } = req.params
     const memberId: String = req.body.memberId
@@ -186,7 +205,7 @@ clubsRouter.post('/:clubId/members', isClubRole(['adminClubs', 'ownedClubs']), a
 })
 
 // Delete member from a club
-clubsRouter.delete('/:clubId/members/:memberId', isClubRole(['adminClubs', 'ownedClubs']), async (req, res) => {
+clubsRouter.delete('/:clubId/members/:memberId', isClubRole('adminClubs'), async (req, res) => {
   try {
     const { clubId, memberId } = req.params
     const club = await prisma.club.update({
@@ -204,7 +223,7 @@ clubsRouter.delete('/:clubId/members/:memberId', isClubRole(['adminClubs', 'owne
 })
 
 // Add an admin to a club
-clubsRouter.post('/:clubId/admins', isClubRole(['adminClubs', 'ownedClubs']), async (req, res) => {
+clubsRouter.post('/:clubId/admins', isClubRole('adminClubs'), async (req, res) => {
   try {
     const { clubId } = req.params
     const adminId: String = req.body.adminId
@@ -226,7 +245,7 @@ clubsRouter.post('/:clubId/admins', isClubRole(['adminClubs', 'ownedClubs']), as
 })
 
 // Delete admin from a club
-clubsRouter.delete('/:clubId/admins/:adminId', isClubRole(['adminClubs', 'ownedClubs']), async (req, res) => {
+clubsRouter.delete('/:clubId/admins/:adminId', isClubRole('adminClubs'), async (req, res) => {
   try {
     const { clubId, adminId } = req.params
     const club = await prisma.club.update({
