@@ -1,10 +1,10 @@
 /* eslint-disable @typescript-eslint/no-misused-promises */
 import { Router } from 'express'
 import { Prisma, PrismaClient } from '@prisma/client'
-import { z } from 'zod'
+import { z, ZodError } from 'zod'
 import { handleUpdateErrors, isAuthenticated, isClubRole } from '../utils'
 
-// Schema to validate received club object
+// Schema to validate received club object for new clubs
 const clubSchema = z.object({
   name: z.string({
     required_error: 'Club name is required'
@@ -18,20 +18,29 @@ const clubSchema = z.object({
   })
     .trim()
     .min(1, 'Club description is required')
-    .max(255, 'Max club description length is 255'),
+    .max(255, 'Max club description length is 255')
+})
 
-  ownerId: z.coerce.number({
-    required_error: 'Owner ID is required'
-  })
-    .int('Invalid owner ID')
-    .positive('Invalid owner ID')
+// Schema to validate received club object for updates
+const updateClubSchema = z.object({
+  name: z.string()
+    .trim()
+    .min(1, 'Club name cannot be empty')
+    .max(30, 'Max club name length is 30')
+    .optional(),
+
+  description: z.string()
+    .trim()
+    .min(1, 'Club description cannot be empty')
+    .max(255, 'Max club description length is 255')
+    .optional()
 })
 
 export const clubsRouter = Router()
 clubsRouter.use(isAuthenticated) // All routes will be log-in protected
 const prisma = new PrismaClient()
 
-// GET all clubs
+// Get all clubs
 clubsRouter.get('/', async (_req, res) => {
   try {
     const clubs = await prisma.club.findMany()
@@ -44,7 +53,7 @@ clubsRouter.get('/', async (_req, res) => {
   }
 })
 
-// GET club by id
+// Get club by id
 clubsRouter.get('/:clubId', async (req, res) => {
   try {
     const { clubId } = req.params
@@ -69,18 +78,22 @@ clubsRouter.get('/:clubId', async (req, res) => {
   }
 })
 
-// POST a new club
+// Post a new club
 clubsRouter.post('/', async (req, res) => {
   try {
     const parsedClub = clubSchema.parse(req.body)
+    const ownerId: number = req.user?.user.id as number
     const club = await prisma.club.create({
       data: {
         ...parsedClub,
+        owner: {
+          connect: { id: ownerId }
+        },
         members: {
-          connect: { id: parsedClub.ownerId }
+          connect: { id: ownerId }
         },
         admins: {
-          connect: { id: parsedClub.ownerId }
+          connect: { id: ownerId }
         }
       }
     })
@@ -94,6 +107,58 @@ clubsRouter.post('/', async (req, res) => {
     } else if (error instanceof z.ZodError) {
       // ZodError refers to failing validation schema
       res.status(400).json({ error: 'Invalid data provided', issues: error.issues })
+    } else {
+      res.status(500).json(error)
+      console.error(error)
+    }
+  }
+})
+
+// Update a club's name or description
+clubsRouter.put('/:clubId', isClubRole(['ownedClubs']), async (req, res) => {
+  try {
+    const { clubId } = req.params
+
+    // Validate sent information
+    const updateData = updateClubSchema.parse(req.body)
+
+    // Update club
+    const club = await prisma.club.update({
+      where: { id: Number(clubId) },
+      data: updateData
+    })
+    res.json(club)
+  } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError) {
+      if (error.code === 'P2025') {
+        res.status(404).json({ error: 'Club not found' })
+      }
+    } else if (error instanceof Prisma.PrismaClientValidationError) {
+      res.status(400).json({ error: 'Invalid club ID' })
+    } else if (error instanceof ZodError) {
+      res.status(400).json({ error: 'Invalid data provided', issues: error.issues })
+    } else {
+      res.status(500).json(error)
+      console.error(error)
+    }
+  }
+})
+
+// Delete a club
+clubsRouter.delete('/:clubId', isClubRole(['ownedClubs']), async (req, res) => {
+  try {
+    const { clubId } = req.params
+    await prisma.club.delete({
+      where: { id: Number(clubId) }
+    })
+    res.sendStatus(200)
+  } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError) {
+      if (error.code === 'P2025') {
+        res.status(404).json({ error: 'Club not found' })
+      }
+    } else if (error instanceof Prisma.PrismaClientValidationError) {
+      res.status(400).json({ error: 'Invalid club ID' })
     } else {
       res.status(500).json(error)
       console.error(error)

@@ -44,7 +44,7 @@ export const isClubRole = (clubRoles: ClubRole[]) => {
   return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     const prisma = new PrismaClient()
     // Build query to validate user's role
-    const clubQueries = clubRoles.map((clubType) => [clubType, { some: { id: Number(req.params.clubId) } }])
+    const clubQueries = Object.fromEntries(clubRoles.map((clubType) => [clubType, { some: { id: Number(req.params.clubId) } }]))
     try {
       // Try to find user
       await prisma.user.findFirstOrThrow({
@@ -55,7 +55,13 @@ export const isClubRole = (clubRoles: ClubRole[]) => {
       })
       next()
     } catch (error) {
-      res.status(401).json({ error: 'User role does not permit this action' })
+      if (error instanceof Prisma.PrismaClientKnownRequestError) {
+        res.status(404).json({ error: 'User or club not found' })
+      } else if (error instanceof Prisma.PrismaClientValidationError) {
+        res.status(400).json({ error: 'Invalid user or club ID' })
+      } else {
+        res.status(401).json({ error: 'User role does not permit this action' })
+      }
     }
   }
 }
