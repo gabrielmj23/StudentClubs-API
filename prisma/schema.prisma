@@ -19,6 +19,7 @@ model User {
   joinedClubs Club[]  @relation("Member")
   ownedClubs  Club[]  @relation("Owner")
   adminClubs  Club[]  @relation("Admin")
+  posts       Post[]
 }
 
 model Club {
@@ -30,4 +31,17 @@ model Club {
   ownerId     Int      @unique
   members     User[]   @relation("Member")
   admins      User[]   @relation("Admin")
+  posts       Post[]
+}
+
+model Post {
+  id          Int      @id @default(autoincrement())
+  title       String
+  content     String
+  createdAt   DateTime @default(now())
+  lastUpdated DateTime @default(now())
+  author      User     @relation(fields: [authorId], references: [id])
+  authorId    Int      @unique
+  club        Club     @relation(fields: [clubId], references: [id])
+  clubId      Int      @unique
 }

@@ -40,21 +40,22 @@ export const isAuthenticated = (req: Request, res: Response, next: NextFunction)
 }
 
 // Helper middleware for validating if user is member, admin or owner of a given club
-export const isClubRole = (clubRoles: ClubRole[]) => {
+export const isClubRole = (role: ClubRole) => {
   return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     const prisma = new PrismaClient()
     // Build query to validate user's role
-    const clubQueries = Object.fromEntries(clubRoles.map((clubType) => [clubType, { some: { id: Number(req.params.clubId) } }]))
+    const clubQuery = Object.fromEntries([[role, { some: { id: Number(req.params.clubId) } }]])
     try {
       // Try to find user
       await prisma.user.findFirstOrThrow({
         where: {
           id: Number(req.user?.user.id),
-          ...clubQueries
+          ...clubQuery
         }
       })
       next()
     } catch (error) {
+      console.log(error)
       if (error instanceof Prisma.PrismaClientKnownRequestError) {
         res.status(404).json({ error: 'User or club not found' })
       } else if (error instanceof Prisma.PrismaClientValidationError) {
