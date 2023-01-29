@@ -70,7 +70,10 @@ postsRouter.get('/', isClubRole('joinedClubs'), async (req, res) => {
 postsRouter.get('/:postId', isClubRole('joinedClubs'), async (req, res) => {
   try {
     const post = await prisma.post.findFirstOrThrow({
-      where: { id: Number(req.params.postId) },
+      where: {
+        id: Number(req.params.postId),
+        clubId: Number(req.params.clubId)
+      },
       include: {
         author: {
           select: { name: true }
@@ -132,7 +135,10 @@ postsRouter.put('/:postId', isClubRole('joinedClubs'), async (req, res) => {
     // Check if post exists
     const postId = req.params.postId
     const postToUpdate = await prisma.post.findFirstOrThrow({
-      where: { id: Number(postId) }
+      where: {
+        id: Number(postId),
+        clubId: Number(req.params.clubId)
+      }
     })
 
     // Check if user requesting is author
@@ -170,7 +176,10 @@ postsRouter.delete('/:postId', isClubRole('joinedClubs'), async (req, res) => {
     // Check if post exists
     const { clubId, postId } = req.params
     const postToDelete = await prisma.post.findFirstOrThrow({
-      where: { id: Number(postId) }
+      where: {
+        id: Number(postId),
+        clubId: Number(clubId)
+      }
     })
 
     // Check if user is admin or owner of the club
