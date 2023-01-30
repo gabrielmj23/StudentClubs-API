@@ -4,6 +4,7 @@ import { Prisma, PrismaClient } from '@prisma/client'
 import { z, ZodError } from 'zod'
 import { handleUpdateErrors, isAuthenticated, isClubRole } from '../utils'
 import { postsRouter } from './posts'
+import { eventsRouter } from './events'
 
 // Schema to validate received club object for new clubs
 const clubSchema = z.object({
@@ -40,6 +41,7 @@ const updateClubSchema = z.object({
 export const clubsRouter = Router()
 clubsRouter.use(isAuthenticated) // All routes will be log-in protected
 clubsRouter.use('/:clubId/posts', postsRouter) // Set up routes relating to clubs' posts
+clubsRouter.use('/:clubId/events', eventsRouter) // Set up routes relating to clubs' events
 const prisma = new PrismaClient()
 
 // Get all clubs
@@ -116,7 +118,7 @@ clubsRouter.post('/', async (req, res) => {
         }
       }
     })
-    res.json(club)
+    res.status(201).json(club)
   } catch (error) {
     // Customize error messages relating to database
     if (error instanceof Prisma.PrismaClientKnownRequestError) {

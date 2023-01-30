@@ -32,6 +32,7 @@ model Club {
   members     User[]   @relation("Member")
   admins      User[]   @relation("Admin")
   posts       Post[]
+  Event       Event[]
 }
 
 model Post {
@@ -42,6 +43,16 @@ model Post {
   lastUpdated DateTime @default(now())
   author      User     @relation(fields: [authorId], references: [id])
   authorId    Int      @unique
+  club        Club     @relation(fields: [clubId], references: [id])
+  clubId      Int      @unique
+}
+
+model Event {
+  id          Int      @id @default(autoincrement())
+  title       String
+  description String
+  date        DateTime
+  finished    Boolean  @default(false)
   club        Club     @relation(fields: [clubId], references: [id])
   clubId      Int      @unique
 }
